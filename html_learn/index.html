@@ -2,17 +2,67 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8">
-    <title>我的第一个网页</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#05070f">
+    <title>农历 · 星期 计算终端</title>
     <link rel="stylesheet" href="style.css">
-
   </head>
-    <body>
-    <div class="card">
-      <h1>你好，互联网</h1>
-      <p id="msg">这是我的第一个网页，现在它有了一点样式。</p>
-      <button onclick="changeText()">点我试试</button>
-    </div>
-    <script src="script.js"></script>
-    </body>
-</html>
+  <body>
+    <!-- 粒子网络背景 -->
+    <canvas id="bg"></canvas>
+    <!-- CRT 扫描线 + 暗角遮罩 -->
+    <div class="overlay"></div>
 
+    <main class="panel">
+      <header class="topbar">
+        <span class="badge">系统在线</span>
+        <span>LUNAR-CALC v2.0</span>
+      </header>
+
+      <h1 class="title" data-text="农历 · 星期 计算终端">农历 · 星期 计算终端</h1>
+
+      <!-- 实时时钟 -->
+      <div class="clock">
+        <div class="clock-time" id="clockTime">--:--:--</div>
+        <div class="clock-date" id="clockDate">----</div>
+      </div>
+
+      <!-- 输入区 -->
+      <section class="input-zone">
+        <label class="field">
+          <span class="field-label">日期 / DATE</span>
+          <input type="date" id="dateInput" min="1900-01-31" max="2100-12-31">
+        </label>
+        <label class="field">
+          <span class="field-label">时间 / TIME</span>
+          <input type="time" id="timeInput">
+        </label>
+        <div class="btn-row">
+          <button type="button" class="btn primary" id="queryBtn">查 询</button>
+          <button type="button" class="btn ghost" id="todayBtn">回到今天</button>
+        </div>
+      </section>
+
+      <!-- 结果区 -->
+      <section class="result" id="result">
+        <div class="result-weekday" id="weekday" tabindex="0"
+             title="点击切换 星期X / 周X">----</div>
+        <div class="result-lunar" id="lunar">请选择日期</div>
+        <div class="result-meta">
+          <span class="chip" id="ganzhi">干支 --</span>
+          <span class="chip" id="zodiac">生肖 --</span>
+          <span class="chip" id="shichen">时辰 --</span>
+          <span class="chip" id="offset">距今 --</span>
+        </div>
+        <button type="button" class="btn ghost small" id="copyBtn">复制结果</button>
+      </section>
+
+      <footer class="foot">
+        <span>支持范围 1900-01-31 ~ 2100-12-31</span>
+        <span class="hint">TIP：点星期文字切换格式 · 悬停标题触发故障字效</span>
+      </footer>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

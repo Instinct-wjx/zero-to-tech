@@ -1,41 +1,449 @@
+/* ============================================================
+   农历 · 星期 计算终端
+   暗色科技风样式
+============================================================ */
+
+:root {
+  --bg: #05070f;
+  --panel: rgba(8, 14, 28, 0.85);
+  --cyan: #00e5ff;
+  --cyan-soft: #7ce8ff;
+  --purple: #a78bfa;
+  --pink: #ff2e88;
+  --text: #dcebff;
+  --muted: #6c86a6;
+  --line: rgba(0, 229, 255, 0.22);
+  --mono: Consolas, "Courier New", "Microsoft YaHei", monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  color-scheme: dark; /* 让日期选择器等原生控件也变成暗色 */
+}
+
 body {
-  background-color: #f0f4f8;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: var(--mono);
+  color: var(--text);
+  background:
+    radial-gradient(60% 50% at 15% 0%, rgba(124, 58, 237, 0.16), transparent),
+    radial-gradient(50% 45% at 85% 100%, rgba(0, 229, 255, 0.10), transparent),
+    var(--bg);
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(0, 229, 255, 0.35);
+  color: #fff;
+}
+
+/* ---------- 背景画布与 CRT 遮罩 ---------- */
+
+#bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+/* 扫描线 + 四周暗角，盖在所有内容上面（不拦截鼠标） */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55));
+}
+
+/* ---------- 主面板 ---------- */
+
+.panel {
+  position: relative;
+  z-index: 2;
+  width: min(560px, 100%);
+  padding: 28px 30px 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 0 45px rgba(0, 229, 255, 0.08),
+    inset 0 0 60px rgba(0, 229, 255, 0.03);
+}
+
+/* 面板顶部的一道发光细线 */
+.panel::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  filter: blur(1px);
+}
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #6bffb8;
+}
+
+/* 呼吸闪烁的小圆点 */
+.badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3dff9e;
+  box-shadow: 0 0 8px #3dff9e;
+  animation: breathe 2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% { opacity: 0.35; }
+}
+
+/* ---------- 标题（故障字效） ---------- */
+
+.title {
+  position: relative;
+  text-align: center;
+  font-size: clamp(21px, 4.6vw, 30px);
+  font-weight: 700;
+  letter-spacing: 5px;
+  color: #eaf6ff;
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.8), 0 0 42px rgba(0, 229, 255, 0.35);
+  animation: flicker 5s infinite;
+  margin-bottom: 22px;
+  cursor: default;
+}
+
+/* 伪元素复刻标题文字，配合 JS 触发红蓝分裂效果 */
+.title::before,
+.title::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.title.glitching::before {
+  opacity: 0.85;
+  color: var(--pink);
+  transform: translate(-3px, 2px);
+  animation: slice-a 0.4s steps(3) 3;
+}
+
+.title.glitching::after {
+  opacity: 0.85;
+  color: var(--cyan);
+  transform: translate(3px, -2px);
+  animation: slice-b 0.4s steps(3) 3;
+}
+
+@keyframes slice-a {
+  0%   { clip-path: inset(8% 0 64% 0); }
+  50%  { clip-path: inset(58% 0 18% 0); }
+  100% { clip-path: inset(30% 0 44% 0); }
+}
+
+@keyframes slice-b {
+  0%   { clip-path: inset(66% 0 6% 0); }
+  50%  { clip-path: inset(12% 0 52% 0); }
+  100% { clip-path: inset(46% 0 26% 0); }
+}
+
+/* 偶尔的霓虹闪烁 */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  91% { opacity: 1; }
+  92% { opacity: 0.55; }
+  93% { opacity: 1; }
+  95% { opacity: 0.75; }
+  96% { opacity: 1; }
+}
+
+/* ---------- 实时时钟 ---------- */
+
+.clock {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.clock-time {
+  font-size: clamp(38px, 8vw, 52px);
+  letter-spacing: 6px;
+  color: var(--cyan);
+  text-shadow: 0 0 18px rgba(0, 229, 255, 0.8);
+  font-variant-numeric: tabular-nums; /* 数字等宽，跳动时不抖动 */
+}
+
+/* 冒号每秒闪烁一次 */
+.clock-time .blink {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.clock-date {
+  margin-top: 8px;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--muted);
+}
+
+/* ---------- 输入区 ---------- */
+
+.input-zone {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--muted);
+}
+
+input[type="date"],
+input[type="time"] {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--cyan-soft);
+  background: rgba(3, 8, 18, 0.8);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 8px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+input[type="date"]:focus,
+input[type="time"]:focus {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+}
+
+.btn-row {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* ---------- 按钮 ---------- */
+
+.btn {
+  flex: 1;
+  padding: 12px 0;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.25s, background 0.25s, transform 0.15s;
+}
+
+.btn.primary {
+  color: var(--cyan);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.16), rgba(124, 58, 237, 0.16));
+  border: 1px solid var(--cyan);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.2), inset 0 0 14px rgba(0, 229, 255, 0.07);
+}
+
+.btn.primary:hover {
+  background: rgba(0, 229, 255, 0.26);
+  box-shadow: 0 0 26px rgba(0, 229, 255, 0.45), inset 0 0 14px rgba(0, 229, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.btn.ghost {
+  color: var(--purple);
+  background: transparent;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+}
+
+.btn.ghost:hover {
+  border-color: var(--purple);
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn.small {
+  flex: 0 0 auto;
+  display: block;
+  margin: 14px auto 0;
+  padding: 8px 24px;
+  font-size: 12px;
+  letter-spacing: 4px;
+}
+
+/* ---------- 结果区 ---------- */
+
+.result {
+  position: relative;
+  overflow: hidden;
+  margin-top: 22px;
+  padding: 24px 18px 20px;
+  text-align: center;
+  background: rgba(2, 6, 14, 0.55);
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  border-radius: 10px;
+}
+
+/* 点击“查询”时扫过的一道光 */
+.result::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(0, 229, 255, 0.18), transparent);
+  transform: skewX(-20deg);
+}
+
+.result.scanning::after {
+  animation: sweep 0.6s ease-out 1;
+}
+
+@keyframes sweep {
+  to { left: 110%; }
+}
+
+.result-weekday {
+  font-size: clamp(34px, 7vw, 46px);
+  font-weight: 700;
+  letter-spacing: 8px;
+  color: #fff;
+  text-shadow: 0 0 16px rgba(167, 139, 250, 0.9), 0 0 46px rgba(167, 139, 250, 0.4);
+  cursor: pointer;
+  transition: transform 0.2s;
+  user-select: none;
+}
+
+.result-weekday:hover {
+  transform: scale(1.04);
+}
+
+/* 周末用粉色光效 */
+.result-weekday.weekend {
+  text-shadow: 0 0 16px rgba(255, 46, 136, 0.9), 0 0 46px rgba(255, 46, 136, 0.4);
+}
+
+.result-lunar {
+  margin-top: 10px;
+  font-size: 19px;
+  letter-spacing: 3px;
+  color: var(--cyan-soft);
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+
+.result-meta {
   display: flex;
   justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
-  font-family: sans-serif;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
 }
 
-.card {
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.chip {
+  padding: 5px 13px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  border: 1px solid rgba(108, 134, 166, 0.35);
+  border-radius: 999px;
 }
 
-h1 {
-  color: #2c3e50;
-  margin-bottom: 12px;
+/* 出错状态 */
+.result.error .result-weekday {
+  color: var(--pink);
+  text-shadow: 0 0 16px rgba(255, 46, 136, 0.8);
 }
 
-p {
-  color: #666;
+.result.error .result-lunar {
+  color: var(--pink);
+  text-shadow: 0 0 10px rgba(255, 46, 136, 0.5);
 }
 
-button {
-  margin-top: 20px;
-  padding: 10px 24px;
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
+.result.error .result-meta,
+.result.error .btn {
+  display: none;
 }
 
-button:hover {
-  background-color: #2980b9;
+/* ---------- 底部 ---------- */
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+.foot .hint {
+  color: #44566f;
+}
+
+/* ---------- 小屏适配 ---------- */
+
+@media (max-width: 480px) {
+  .panel { padding: 22px 16px 16px; }
+  .input-zone { grid-template-columns: 1fr; }
+}
+
+/* ---------- 用户偏好减少动态效果时，关闭所有动画 ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
