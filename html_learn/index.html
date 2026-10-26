@@ -3,23 +3,30 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#05070f">
-    <title>农历 · 星期 计算终端</title>
+    <meta name="theme-color" content="#f4ecdb">
+    <title>岁时记 · 传统黄历</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <!-- 粒子网络背景 -->
-    <canvas id="bg"></canvas>
-    <!-- CRT 扫描线 + 暗角遮罩 -->
-    <div class="overlay"></div>
+    <!-- 水墨背景（隔日自动更换，程序绘制） -->
+    <div id="inkBg" aria-hidden="true"></div>
+    <!-- 宣纸纹理 + 暗角 -->
+    <div class="paper-veil" aria-hidden="true"></div>
 
     <main class="panel">
       <header class="topbar">
-        <span class="badge">系统在线</span>
-        <span>LUNAR-CALC v2.0</span>
+        <span class="brand">
+          <span class="brand-cn">岁时记</span>
+          <span class="brand-en">TRADITIONAL ALMANAC</span>
+        </span>
+        <button type="button" class="seal" id="sealBtn" title="点击换一幅背景画">歲<br>月</button>
       </header>
 
-      <h1 class="title" data-text="农历 · 星期 计算终端">农历 · 星期 计算终端</h1>
+      <h1 class="title">岁 时 记</h1>
+      <p class="subtitle">四时流转 · 万物有序</p>
 
       <!-- 实时时钟 -->
       <div class="clock">
@@ -30,38 +37,126 @@
       <!-- 输入区 -->
       <section class="input-zone">
         <label class="field">
-          <span class="field-label">日期 / DATE</span>
+          <span class="field-label">择 日</span>
           <input type="date" id="dateInput" min="1900-01-31" max="2100-12-31">
         </label>
         <label class="field">
-          <span class="field-label">时间 / TIME</span>
+          <span class="field-label">时 辰</span>
           <input type="time" id="timeInput">
         </label>
         <div class="btn-row">
-          <button type="button" class="btn primary" id="queryBtn">查 询</button>
-          <button type="button" class="btn ghost" id="todayBtn">回到今天</button>
+          <button type="button" class="btn primary" id="queryBtn">查 黄 历</button>
+          <button type="button" class="btn ghost" id="todayBtn">今日</button>
+          <button type="button" class="btn ghost" id="calBtn">月 历</button>
         </div>
       </section>
 
       <!-- 结果区 -->
       <section class="result" id="result">
-        <div class="result-weekday" id="weekday" tabindex="0"
+        <div class="result-lunar" id="lunar" role="button" tabindex="0"
+             title="点击查看农历与干支详情">请选择日期</div>
+        <div class="result-weekday" id="weekday" role="button" tabindex="0"
              title="点击切换 星期X / 周X">----</div>
-        <div class="result-lunar" id="lunar">请选择日期</div>
+
         <div class="result-meta">
-          <span class="chip" id="ganzhi">干支 --</span>
-          <span class="chip" id="zodiac">生肖 --</span>
-          <span class="chip" id="shichen">时辰 --</span>
-          <span class="chip" id="offset">距今 --</span>
+          <span class="chip" id="chipYearGanzhi">年干支 --</span>
+          <span class="chip" id="chipDayGanzhi">日干支 --</span>
+          <span class="chip" id="chipZodiac">生肖 --</span>
+          <span class="chip" id="chipShichen">时辰 --</span>
+          <span class="chip" id="chipOffset">距今 --</span>
         </div>
-        <button type="button" class="btn ghost small" id="copyBtn">复制结果</button>
+
+        <!-- 该日的个人印记（月历里落印） -->
+        <div class="mark-note" id="markNote" hidden></div>
+
+        <!-- 节气卡（可点击看详情） -->
+        <div class="card" id="termCard" role="button" tabindex="0"
+             title="点击查看节气详情">
+          <span class="card-head"><span class="card-icon">节</span>节 气</span>
+          <span class="card-main" id="termName">--</span>
+          <span class="card-sub" id="termSub">--</span>
+          <span class="card-more">详 ›</span>
+        </div>
+
+        <!-- 最近节日卡（可点击看详情） -->
+        <div class="card" id="festCard" role="button" tabindex="0"
+             title="点击查看节日详情">
+          <span class="card-head"><span class="card-icon">庆</span>最近节日</span>
+          <span class="card-main" id="festName">--</span>
+          <span class="card-sub" id="festSub">--</span>
+          <span class="card-more">详 ›</span>
+        </div>
+
+        <!-- 养生卡（可点击看详情） -->
+        <div class="card" id="yangCard" role="button" tabindex="0"
+             title="点击查看顺应天时的养生之道">
+          <span class="card-head"><span class="card-icon jade">养</span>养生之道</span>
+          <span class="card-main" id="yangName">--</span>
+          <span class="card-sub" id="yangSub">--</span>
+          <span class="card-more">详 ›</span>
+        </div>
+
+        <!-- 当日节日 / 之后节日 -->
+        <div class="fest-today" id="festToday"></div>
+        <div class="fest-more" id="festMore"></div>
+
+        <button type="button" class="btn ghost small" id="copyBtn">复制黄历</button>
       </section>
 
       <footer class="foot">
-        <span>支持范围 1900-01-31 ~ 2100-12-31</span>
-        <span class="hint">TIP：点星期文字切换格式 · 悬停标题触发故障字效</span>
+        <span>支持 1900-01-31 ~ 2100-12-31</span>
+        <span class="hint" id="bgHint"></span>
       </footer>
     </main>
+
+    <!-- 月历弹窗（含日期标记） -->
+    <div class="modal" id="calModal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-box cal-box" role="dialog" aria-label="月历">
+        <button class="modal-close" data-close aria-label="关闭">✕</button>
+
+        <div class="cal-head">
+          <button class="cal-nav" id="calPrev" aria-label="上一月">◀</button>
+          <div class="cal-title">
+            <span class="cal-title-lunar" id="calLunarTitle">----</span>
+            <span class="cal-title-solar" id="calSolarTitle">----</span>
+          </div>
+          <button class="cal-nav" id="calNext" aria-label="下一月">▶</button>
+        </div>
+        <button class="btn ghost small cal-today" id="calTodayBtn">回到本月</button>
+
+        <div class="cal-week">
+          <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+
+        <div class="cal-mark">
+          <div class="cal-mark-title" id="calSelInfo">点选一日，可为其落印标记</div>
+          <div class="cal-mark-row">
+            <input type="text" id="markInput" maxlength="24" placeholder="写一句备注（可留空）">
+            <button class="btn ghost small" id="markAddBtn">落 印</button>
+            <button class="btn ghost small" id="markDelBtn">除 印</button>
+          </div>
+          <div class="cal-legend" id="calLegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 详情弹窗（卷轴样式） -->
+    <div class="modal" id="detailModal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-box scroll-box" role="dialog" aria-label="详情">
+        <div class="rod rod-top"></div>
+        <div class="scroll-body">
+          <h2 class="detail-title" id="detailTitle"></h2>
+          <div class="detail-meta" id="detailMeta"></div>
+          <div class="detail-body" id="detailBody"></div>
+          <div class="detail-seal">歲<br>記</div>
+        </div>
+        <div class="rod rod-bottom"></div>
+        <button class="modal-close" data-close aria-label="关闭">✕</button>
+      </div>
+    </div>
 
     <script src="script.js"></script>
   </body>
