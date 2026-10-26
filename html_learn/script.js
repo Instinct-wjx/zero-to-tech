@@ -950,6 +950,8 @@ if (typeof document !== 'undefined') {
   const yangCard    = document.getElementById('yangCard');
   const yangName    = document.getElementById('yangName');
   const yangSub     = document.getElementById('yangSub');
+  const markCard    = document.getElementById('markCard');
+  const markBody    = document.getElementById('markBody');
   const clockTimeEl = document.getElementById('clockTime');
   const clockDateEl = document.getElementById('clockDate');
   const inkBg       = document.getElementById('inkBg');
@@ -971,25 +973,245 @@ if (typeof document !== 'undefined') {
   const detailTitle = document.getElementById('detailTitle');
   const detailMeta  = document.getElementById('detailMeta');
   const detailBody  = document.getElementById('detailBody');
+  const userBtn     = document.getElementById('userBtn');
+  const userModal   = document.getElementById('userModal');
+  const userClose   = document.getElementById('userClose');
+  const userInput   = document.getElementById('userInput');
+  const userRegBtn  = document.getElementById('userRegBtn');
+  const userErr     = document.getElementById('userErr');
+  const userNow     = document.getElementById('userNow');
+  const userList    = document.getElementById('userList');
+  const userListTitle = document.getElementById('userListTitle');
+  const eventList     = document.getElementById('eventList');
+  const eventListTitle = document.getElementById('eventListTitle');
 
   /* ---- 状态 ---- */
   let weekModeShort = false;   // false = 星期一，true = 周一
   let lastResultText = '';     // 复制用的汇总文本
   let state = null;            // 当前查询结果（供详情弹窗使用）
-  let bgOverride = null;       // 手动换画（仅本次会话有效）
+  let bgOverride = null;       // 手动换画（随名号保存）
   let calView = { y: new Date().getFullYear(), m: new Date().getMonth() };
+
+  /* 印记等数据随「名号」保存，见下方名号存储区 */
+  let marks = {};
 
   const MIN_DATE = new Date(1900, 0, 31);
   const MAX_DATE = new Date(2100, 11, 31);
 
-  /* ---- 印记存储 ---- */
-  let marks = {};
-  try {
-    marks = JSON.parse(localStorage.getItem('suishiji.marks') || '{}');
-  } catch { marks = {}; }
-
   function saveMarks() {
-    try { localStorage.setItem('suishiji.marks', JSON.stringify(marks)); } catch {}
+    if (userData) {
+      userData.marks = marks;
+      saveUserData();
+    }
+  }
+
+  /* ---- 名号（用户）存储：注册 / 切换 / 事件记录 ---- */
+  const USERS_KEY = 'suishiji.users';
+  const CUR_USER_KEY = 'suishiji.currentUser';
+  const LEGACY_MARKS_KEY = 'suishiji.marks';
+  const MAX_EVENTS = 300;
+
+  let users = [];          // 全部名号（不可重复）
+  let currentUser = null;  // 当前名号
+  let userData = null;     // 当前名号的数据 { name, created, marks, events, lastDate, lastTime, weekMode, bgOverride }
+  let userLocked = false;  // 首访时的入册弹窗不可关闭
+
+  function loadUsers() {
+    try { users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]'); } catch { users = []; }
+  }
+
+  function saveUsers() {
+    try { localStorage.setItem(USERS_KEY, JSON.stringify(users)); } catch {}
+  }
+
+  function userDataKey(name) {
+    return 'suishiji.user.' + name;
+  }
+
+  function loadUserData(name) {
+    try {
+      const raw = localStorage.getItem(userDataKey(name));
+      if (raw) {
+        const d = JSON.parse(raw);
+        d.marks = d.marks || {};
+        d.events = d.events || [];
+        return d;
+      }
+    } catch {}
+    return {
+      name,
+      created: Date.now(),
+      marks: {},
+      events: [],
+      lastDate: null,
+      lastTime: null,
+      weekMode: false,
+      bgOverride: null,
+    };
+  }
+
+  function saveUserData() {
+    if (!userData) return;
+    try { localStorage.setItem(userDataKey(userData.name), JSON.stringify(userData)); } catch {}
+  }
+
+  /* 记录一名用户的所行之事（事件日志） */
+  function logEvent(act) {
+    if (!userData) return;
+    const now = new Date();
+    userData.events.push({
+      t: `${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`,
+      act,
+    });
+    if (userData.events.length > MAX_EVENTS) {
+      userData.events.splice(0, userData.events.length - MAX_EVENTS);
+    }
+    saveUserData();
+  }
+
+  /* 恢复该名号的选择与印记（不是每次都是新界面） */
+  function applyUserData() {
+    marks = userData.marks || {};
+    weekModeShort = !!userData.weekMode;
+    bgOverride = (userData.bgOverride === undefined || userData.bgOverride === null)
+      ? null : userData.bgOverride;
+    if (userData.lastDate && /^\d{4}-\d{2}-\d{2}$/.test(userData.lastDate)) {
+      dateInput.value = userData.lastDate;
+    }
+    if (userData.lastTime && /^\d{2}:\d{2}$/.test(userData.lastTime)) {
+      timeInput.value = userData.lastTime;
+    }
+  }
+
+  /* 以某个名号登入 */
+  function enterUser(name) {
+    currentUser = name;
+    try { localStorage.setItem(CUR_USER_KEY, name); } catch {}
+    userData = loadUserData(name);
+    applyUserData();
+    userBtn.textContent = '名号 · ' + name;
+    renderPainting();
+    render();
+  }
+
+  /* 注册新名号：不可为空、不可重复 */
+  function registerUser() {
+    const name = userInput.value.trim();
+    if (!name) { userErr.textContent = '名号不可为空'; return; }
+    if (name.length > 12) { userErr.textContent = '名号过长（最多 12 字）'; return; }
+    if (users.includes(name)) { userErr.textContent = '此名号已有人用了，换一个吧'; return; }
+
+    // 首名入册时，承接旧版本留下的无主印记
+    const legacy = localStorage.getItem(LEGACY_MARKS_KEY);
+    const d = loadUserData(name);
+    if (legacy && users.length === 0) {
+      try { d.marks = { ...d.marks, ...JSON.parse(legacy) }; } catch {}
+      try { localStorage.removeItem(LEGACY_MARKS_KEY); } catch {}
+    }
+
+    users.push(name);
+    saveUsers();
+    userData = d;
+    currentUser = name;
+    try { localStorage.setItem(CUR_USER_KEY, name); } catch {}
+    logEvent('入册');
+    applyUserData();
+
+    userLocked = false;
+    userClose.hidden = false;
+    userModal.hidden = true;
+    userBtn.textContent = '名号 · ' + name;
+    renderPainting();
+    render();
+  }
+
+  /* 渲染名号弹窗内容 */
+  function renderUserModal() {
+    userNow.textContent = currentUser ? `当前名号 · ${currentUser}` : '尚未入册，请取名号';
+    userErr.textContent = '';
+    userInput.value = '';
+
+    userListTitle.textContent = `已有名号（${users.length}）`;
+    userList.innerHTML = '';
+    if (!users.length) {
+      const empty = document.createElement('div');
+      empty.className = 'event-item';
+      empty.textContent = '尚无他人名号，入册后名号将长留此页';
+      userList.appendChild(empty);
+    } else {
+      for (const u of users) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'user-row' + (u === currentUser ? ' current' : '');
+        const nm = document.createElement('span');
+        nm.className = 'user-name';
+        nm.textContent = u;
+        const tag = document.createElement('span');
+        tag.className = 'user-tag';
+        tag.textContent = u === currentUser ? '当前' : '进入 ›';
+        row.append(nm, tag);
+        row.addEventListener('click', () => {
+          if (u === currentUser) return;
+          userLocked = false;
+          userClose.hidden = false;
+          enterUser(u);
+          renderUserModal();
+        });
+        userList.appendChild(row);
+      }
+    }
+
+    const evs = userData ? userData.events : [];
+    eventListTitle.textContent = `所行之事（共 ${evs.length} 条）`;
+    eventList.innerHTML = '';
+    if (!evs.length) {
+      const empty = document.createElement('div');
+      empty.className = 'event-item';
+      empty.textContent = '暂无记录';
+      eventList.appendChild(empty);
+    } else {
+      for (const ev of [...evs].reverse().slice(0, 30)) {
+        const item = document.createElement('div');
+        item.className = 'event-item';
+        const t = document.createElement('span');
+        t.className = 'event-time';
+        t.textContent = ev.t;
+        const a = document.createElement('span');
+        a.textContent = ev.act;
+        item.append(t, a);
+        eventList.appendChild(item);
+      }
+    }
+  }
+
+  /* 印记按日期排序 */
+  function sortedMarks() {
+    return Object.entries(marks)
+      .map(([date, note]) => ({ date, note }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  /* 距今天数（今天 = 0，未来为正，过去为负） */
+  function daysFromToday(dateStr) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return Math.round((new Date(y, m - 1, d).getTime() - today.getTime()) / 86400000);
+  }
+
+  /* 倒计时文案 */
+  function markCountdown(dateStr) {
+    const diff = daysFromToday(dateStr);
+    if (diff === 0) return '正是今日';
+    if (diff === 1) return '明天';
+    if (diff > 1) return diff + ' 天后';
+    if (diff === -1) return '昨天';
+    return '已过 ' + (-diff) + ' 天';
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   /* ---- 实时时钟 ---- */
@@ -1015,7 +1237,9 @@ if (typeof document !== 'undefined') {
 
   sealBtn.addEventListener('click', () => {
     bgOverride = (currentPaintingIndex() + 1) % PAINTINGS.length;
+    if (userData) userData.bgOverride = bgOverride;
     renderPainting();
+    logEvent('更换背景画 · ' + PAINTINGS[bgOverride].name);
   });
 
   /* ---- 查询与渲染 ---- */
@@ -1128,6 +1352,17 @@ if (typeof document !== 'undefined') {
     const mark = marks[dateVal];
     markNoteEl.hidden = !mark;
     markNoteEl.textContent = mark || '';
+
+    // 重要日期卡（临近七日直接显示倒计时）
+    fillMarkCard();
+
+    // 记住用户的选择（下次打开仍是此界面）
+    if (userData) {
+      userData.lastDate = dateVal;
+      userData.lastTime = timeVal;
+      userData.weekMode = weekModeShort;
+      saveUserData();
+    }
 
     // 记录状态与复制文本
     state = { dateVal, date, lunar, week, terms, ups, hour };
@@ -1248,17 +1483,160 @@ if (typeof document !== 'undefined') {
     detailModal.hidden = false;
   }
 
+  /* ---- 重要日期：卡片与印记簿 ---- */
+  /* 卡片上一行小字：· 备注 · 倒计时 */
+  function markLineEl(m, isNear) {
+    const line = document.createElement('div');
+    line.className = 'mark-line' + (isNear ? ' near' : '');
+    line.title = m.date;
+    const note = document.createElement('span');
+    note.textContent = '· ' + m.note;
+    const days = document.createElement('span');
+    days.className = 'mark-line-days';
+    days.textContent = markCountdown(m.date);
+    line.append(note, days);
+    return line;
+  }
+
+  function fillMarkCard() {
+    const entries = sortedMarks();
+    markBody.innerHTML = '';
+
+    if (!entries.length) {
+      const empty = document.createElement('div');
+      empty.className = 'mark-empty';
+      empty.textContent = '尚未落印 · 打开月历为重要日子落印';
+      markBody.appendChild(empty);
+      return;
+    }
+
+    const near = entries.filter((m) => {
+      const df = daysFromToday(m.date);
+      return df >= 0 && df <= 7;
+    });
+    const far = entries.filter((m) => daysFromToday(m.date) > 7);
+    const past = entries.filter((m) => daysFromToday(m.date) < 0);
+
+    // 七日之内（含今日）：小字直接列出
+    const nearBox = document.createElement('div');
+    nearBox.className = 'mark-lines';
+    if (near.length) {
+      for (const m of near) nearBox.appendChild(markLineEl(m, true));
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'mark-line faint';
+      empty.textContent = '· 七日内暂无印记';
+      nearBox.appendChild(empty);
+    }
+    markBody.appendChild(nearBox);
+
+    // 其余（七日之外 + 已过）：默认收起，按下展开
+    const restCount = far.length + past.length;
+    if (restCount) {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'mark-toggle';
+      toggle.textContent = `其余印记（${restCount}）▾`;
+
+      const hiddenBox = document.createElement('div');
+      hiddenBox.className = 'mark-lines';
+      hiddenBox.hidden = true;
+      for (const m of far) hiddenBox.appendChild(markLineEl(m, false));
+      for (const m of past) {
+        const line = document.createElement('div');
+        line.className = 'mark-line past';
+        line.title = m.date;
+        const note = document.createElement('span');
+        note.textContent = `· ${m.note} · ${fmtShort(m.date)}`;
+        const days = document.createElement('span');
+        days.className = 'mark-line-days';
+        days.textContent = '已过';
+        line.append(note, days);
+        hiddenBox.appendChild(line);
+      }
+
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation(); // 不触发整卡点击（印记簿）
+        const open = hiddenBox.hidden;
+        hiddenBox.hidden = !open;
+        toggle.textContent = open ? '收起 ▴' : `其余印记（${restCount}）▾`;
+      });
+
+      markBody.appendChild(toggle);
+      markBody.appendChild(hiddenBox);
+    }
+  }
+
+  function openMarksDetail() {
+    const entries = sortedMarks();
+    detailTitle.textContent = '重要日期 · 印记簿';
+    detailMeta.textContent = `共 ${entries.length} 枚印记 · 存于本机`;
+
+    if (!entries.length) {
+      detailBody.innerHTML =
+        `<p>还没有任何印记。打开「月历」，点选一个日期、写下备注，即可落下朱印。</p>` +
+        `<button type="button" class="btn ghost small" id="goCalBtn">前往月历</button>`;
+      document.getElementById('goCalBtn').addEventListener('click', () => {
+        detailModal.hidden = true;
+        openCalendar();
+      });
+    } else {
+      detailBody.innerHTML =
+        `<div class="mark-list">` +
+        entries.map((m) => {
+          const cd = markCountdown(m.date);
+          return `<button type="button" class="mark-row${cd === '正是今日' ? ' today' : ''}" data-date="${m.date}">
+            <span class="mark-row-note">${escapeHtml(m.note)}</span>
+            <span class="mark-row-date">${m.date}</span>
+            <span class="mark-row-days">${cd}</span>
+          </button>`;
+        }).join('') +
+        `</div>` +
+        `<p class="yang-note">点击任意印记，主界面即刻切换至该日黄历。临近七日之印，主界面会直接显示倒计天数。</p>`;
+      detailBody.querySelectorAll('.mark-row').forEach((row) => {
+        row.addEventListener('click', () => {
+          dateInput.value = row.dataset.date;
+          detailModal.hidden = true;
+          render();
+          logEvent('自印记簿择日 ' + row.dataset.date);
+        });
+      });
+    }
+    detailModal.hidden = false;
+  }
+
   /* ---- 弹窗通用 ---- */
-  document.querySelectorAll('.modal').forEach((m) => {
+  document.querySelectorAll('.modal:not(#userModal)').forEach((m) => {
     m.addEventListener('click', (e) => {
       if (e.target.closest('[data-close]')) m.hidden = true;
     });
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (!userLocked) userModal.hidden = true;
       calModal.hidden = true;
       detailModal.hidden = true;
     }
+  });
+
+  /* ---- 名号弹窗交互 ---- */
+  userBtn.addEventListener('click', () => {
+    userLocked = false;
+    userClose.hidden = false;
+    renderUserModal();
+    userModal.hidden = false;
+    userInput.focus();
+  });
+
+  userRegBtn.addEventListener('click', registerUser);
+  userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') registerUser();
+  });
+
+  // 锁定（首访）时不可关闭；否则点遮罩或关闭钮即收起
+  userModal.addEventListener('click', (e) => {
+    if (userLocked) return;
+    if (e.target.closest('[data-close]')) userModal.hidden = true;
   });
 
   /* ---- 月历 ---- */
@@ -1336,6 +1714,7 @@ if (typeof document !== 'undefined') {
         dateInput.value = key;
         render();
         buildCal();
+        logEvent('月历择日 ' + key);
       });
       calGrid.appendChild(cell);
     }
@@ -1366,6 +1745,7 @@ if (typeof document !== 'undefined') {
     saveMarks();
     render();
     buildCal();
+    logEvent(`落印 ${dateInput.value}：${note}`);
   });
 
   markDelBtn.addEventListener('click', () => {
@@ -1374,6 +1754,7 @@ if (typeof document !== 'undefined') {
     saveMarks();
     render();
     buildCal();
+    logEvent('除印 ' + dateInput.value);
   });
 
   markInput.addEventListener('keydown', (e) => {
@@ -1381,11 +1762,15 @@ if (typeof document !== 'undefined') {
   });
 
   /* ---- 事件 ---- */
-  dateInput.addEventListener('change', render);
+  dateInput.addEventListener('change', () => {
+    render();
+    logEvent('择日 ' + dateInput.value);
+  });
   timeInput.addEventListener('change', render);
 
   queryBtn.addEventListener('click', () => {
     render();
+    logEvent('查询 ' + dateInput.value);
     // 重放“研墨”闪烁动画
     result.classList.remove('query-flash');
     void result.offsetWidth;
@@ -1397,6 +1782,7 @@ if (typeof document !== 'undefined') {
     dateInput.value = fmtDate(now);
     timeInput.value = pad(now.getHours()) + ':' + pad(now.getMinutes());
     render();
+    logEvent('回到今日');
   });
 
   calBtn.addEventListener('click', openCalendar);
@@ -1422,6 +1808,7 @@ if (typeof document !== 'undefined') {
 
   function openCardOnKey(el, fn) {
     el.addEventListener('keydown', (e) => {
+      if (e.target !== el) return; // 卡内按钮（如展开钮）自行处理
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         fn();
@@ -1443,6 +1830,9 @@ if (typeof document !== 'undefined') {
 
   yangCard.addEventListener('click', openYangDetail);
   openCardOnKey(yangCard, openYangDetail);
+
+  markCard.addEventListener('click', openMarksDetail);
+  openCardOnKey(markCard, openMarksDetail);
 
   copyBtn.addEventListener('click', async () => {
     if (!lastResultText) return;
@@ -1478,8 +1868,23 @@ if (typeof document !== 'undefined') {
   timeInput.value = pad(nowInit.getHours()) + ':' + pad(nowInit.getMinutes());
 
   buildCalendars();
-  render();
-  renderPainting();
+  loadUsers();
+  const savedCur = localStorage.getItem(CUR_USER_KEY);
+
+  if (savedCur && users.includes(savedCur)) {
+    // 老友归来：直接恢复其界面与印记
+    enterUser(savedCur);
+  } else {
+    // 首访：以游客状态渲染，并锁定入册弹窗
+    render();
+    renderPainting();
+    userLocked = true;
+    userClose.hidden = true;
+    renderUserModal();
+    userModal.hidden = false;
+    userInput.focus();
+  }
+
   tick();
   setInterval(tick, 1000);
 }

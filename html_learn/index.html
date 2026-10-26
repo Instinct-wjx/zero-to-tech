@@ -22,7 +22,11 @@
           <span class="brand-cn">岁时记</span>
           <span class="brand-en">TRADITIONAL ALMANAC</span>
         </span>
-        <button type="button" class="seal" id="sealBtn" title="点击换一幅背景画">歲<br>月</button>
+        <span class="topbar-right">
+          <button type="button" class="user-btn" id="userBtn"
+                  title="名号 · 点击切换或入册">名号 · 无名氏</button>
+          <button type="button" class="seal" id="sealBtn" title="点击换一幅背景画">歲<br>月</button>
+        </span>
       </header>
 
       <h1 class="title">岁 时 记</h1>
@@ -96,6 +100,14 @@
           <span class="card-more">详 ›</span>
         </div>
 
+        <!-- 重要日期卡（月历印记：7 天内小字列出，其余按下展开） -->
+        <div class="card" id="markCard" role="button" tabindex="0"
+             title="点击查看全部印记">
+          <span class="card-head"><span class="card-icon">印</span>重要日期</span>
+          <div class="mark-body" id="markBody"></div>
+          <span class="card-more">详 ›</span>
+        </div>
+
         <!-- 当日节日 / 之后节日 -->
         <div class="fest-today" id="festToday"></div>
         <div class="fest-more" id="festMore"></div>
@@ -155,6 +167,41 @@
         </div>
         <div class="rod rod-bottom"></div>
         <button class="modal-close" data-close aria-label="关闭">✕</button>
+      </div>
+    </div>
+
+    <!-- 名号弹窗（注册 / 切换用户 / 所行之事） -->
+    <div class="modal" id="userModal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-box scroll-box user-box" role="dialog" aria-label="名号">
+        <div class="rod rod-top"></div>
+        <div class="scroll-body">
+          <h2 class="detail-title">名号 · 入册</h2>
+          <div class="detail-meta">以名号为凭，各记各事</div>
+
+          <div class="user-now" id="userNow"></div>
+
+          <div class="user-reg">
+            <input type="text" id="userInput" maxlength="12"
+                   placeholder="取一个新名号（仅名字，无需密码）">
+            <button class="btn primary small" id="userRegBtn">入 册</button>
+          </div>
+          <div class="user-err" id="userErr"></div>
+
+          <div class="user-section">
+            <div class="user-section-title" id="userListTitle">已有名号</div>
+            <div class="user-list" id="userList"></div>
+          </div>
+
+          <div class="user-section">
+            <div class="user-section-title" id="eventListTitle">所行之事</div>
+            <div class="event-list" id="eventList"></div>
+          </div>
+
+          <div class="detail-seal">名<br>册</div>
+        </div>
+        <div class="rod rod-bottom"></div>
+        <button class="modal-close" id="userClose" data-close aria-label="关闭">✕</button>
       </div>
     </div>
 
