@@ -1,0 +1,1291 @@
+/* ============================================================
+   岁时记 · 传统黄历
+   古风样式：宣纸、水墨、朱砂、楷体
+============================================================ */
+
+:root {
+  --paper: #f4ecdb;
+  --paper-deep: #ece1c9;
+  --paper-white: #fbf7ec;
+  --ink: #2e2a24;
+  --ink-soft: #5c554a;
+  --ink-faint: #8a8171;
+  --cinnabar: #a63a2a;          /* 朱红 */
+  --cinnabar-deep: #8c2f22;
+  --cinnabar-soft: rgba(166, 58, 42, 0.10);
+  --gold: #b08d4f;
+  --jade: #4a6b5d;              /* 黛青 */
+  --line: rgba(46, 42, 36, 0.18);
+  --line-strong: rgba(46, 42, 36, 0.42);
+  /* 字体由 next/font 注入（layout.js 中的 CSS 变量），此处接上中文字体回退 */
+  --font-brush: var(--font-brush-next), "KaiTi", "STKaiti", "楷体", serif;
+  --font-body: var(--font-body-next), "Songti SC", "SimSun", "宋体", serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--cinnabar);
+  color: var(--paper-white);
+}
+
+/* ---------- 水墨背景层 ---------- */
+
+#inkBg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+#inkBg .paint {
+  width: 100%;
+  height: 100%;
+  display: block;
+  animation: paintIn 1.6s ease both;
+}
+
+@keyframes paintIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 宣纸纹理 + 四周暗角 */
+.paper-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.30 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='260' height='260' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E"),
+    radial-gradient(115% 105% at 50% 50%, transparent 58%, rgba(70, 52, 26, 0.16));
+}
+
+/* ---------- 主面板（绢帛装裱） ---------- */
+
+.panel {
+  position: relative;
+  z-index: 2;
+  width: min(580px, 100%);
+  padding: 26px 32px 18px;
+  background:
+    linear-gradient(180deg, rgba(253, 249, 240, 0.95), rgba(247, 240, 224, 0.96));
+  border: 1px solid var(--line);
+  outline: 1px solid var(--line);
+  outline-offset: 5px;
+  border-radius: 6px;
+  box-shadow: 0 24px 70px rgba(70, 52, 26, 0.28);
+}
+
+/* 顶部与底部的朱红压线，如卷首落款 */
+.panel::before,
+.panel::after {
+  content: "";
+  display: block;
+  height: 2px;
+  margin: 0 auto 20px;
+  background: linear-gradient(90deg, transparent, var(--cinnabar), transparent);
+  opacity: 0.55;
+}
+.panel::after {
+  margin: 18px auto 0;
+  opacity: 0.3;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.brand-cn {
+  font-family: var(--font-brush);
+  font-size: 22px;
+  letter-spacing: 4px;
+  color: var(--ink);
+}
+
+.brand-en {
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--ink-faint);
+}
+
+/* 顶栏右侧：名号 + 印章 */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 名号按钮 */
+.user-btn {
+  padding: 7px 13px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--ink-soft);
+  background: rgba(251, 247, 236, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.user-btn:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+/* 印章按钮 */
+.seal {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: var(--cinnabar);
+  color: var(--paper-white);
+  font-family: var(--font-brush);
+  font-size: 14px;
+  line-height: 1.35;
+  letter-spacing: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(166, 58, 42, 0.35), inset 0 0 0 2px rgba(255, 245, 225, 0.28);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.seal:hover {
+  transform: rotate(-6deg) scale(1.05);
+  box-shadow: 0 5px 16px rgba(166, 58, 42, 0.5), inset 0 0 0 2px rgba(255, 245, 225, 0.28);
+}
+
+/* ---------- 标题 ---------- */
+
+.title {
+  text-align: center;
+  font-family: var(--font-brush);
+  font-size: clamp(34px, 8vw, 46px);
+  font-weight: 400;
+  letter-spacing: 14px;
+  text-indent: 14px; /* 抵消最后一个字的字距，保持居中 */
+  color: var(--ink);
+  margin: 6px 0 2px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 6px;
+  color: var(--ink-faint);
+  margin-bottom: 20px;
+}
+
+.subtitle::before {
+  content: "— ";
+  color: var(--cinnabar);
+}
+.subtitle::after {
+  content: " —";
+  color: var(--cinnabar);
+}
+
+/* ---------- 实时时钟 ---------- */
+
+.clock {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.clock-time {
+  font-family: var(--font-brush);
+  font-size: clamp(34px, 7.5vw, 46px);
+  letter-spacing: 8px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-date {
+  margin-top: 6px;
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: var(--ink-faint);
+}
+
+/* ---------- 输入区 ---------- */
+
+.input-zone {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: var(--ink-soft);
+}
+
+input[type="date"],
+input[type="time"],
+input[type="text"] {
+  width: 100%;
+  padding: 9px 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--ink);
+  background: var(--paper-white);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--cinnabar);
+  box-shadow: 0 0 0 3px var(--cinnabar-soft);
+}
+
+.btn-row {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* ---------- 按钮 ---------- */
+
+.btn {
+  flex: 1;
+  padding: 11px 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  letter-spacing: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.25s, box-shadow 0.25s, transform 0.15s, color 0.25s;
+}
+
+.btn.primary {
+  color: var(--paper-white);
+  background: var(--cinnabar);
+  border: 1px solid var(--cinnabar-deep);
+  box-shadow: 0 3px 10px rgba(166, 58, 42, 0.3);
+}
+
+.btn.primary:hover {
+  background: var(--cinnabar-deep);
+  box-shadow: 0 5px 16px rgba(166, 58, 42, 0.42);
+  transform: translateY(-1px);
+}
+
+.btn.ghost {
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+}
+
+.btn.ghost:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+  background: var(--cinnabar-soft);
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn.small {
+  flex: 0 0 auto;
+  display: block;
+  margin: 14px auto 0;
+  padding: 7px 22px;
+  font-size: 12px;
+  letter-spacing: 4px;
+}
+
+/* ---------- 结果区 ---------- */
+
+.result {
+  margin-top: 20px;
+  padding: 20px 18px 14px;
+  text-align: center;
+  background: rgba(251, 247, 236, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  position: relative;
+}
+
+.result-lunar {
+  font-family: var(--font-brush);
+  font-size: clamp(26px, 6vw, 34px);
+  letter-spacing: 6px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: color 0.2s, transform 0.2s;
+  user-select: none;
+}
+
+.result-lunar:hover {
+  color: var(--cinnabar);
+  transform: scale(1.02);
+}
+
+.result-lunar::after {
+  content: " ⓘ";
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--ink-faint);
+  vertical-align: super;
+}
+
+.result-weekday {
+  margin-top: 8px;
+  font-size: 17px;
+  letter-spacing: 5px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.result-weekday:hover {
+  color: var(--cinnabar);
+}
+
+.result-meta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.chip {
+  padding: 4px 13px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 253, 246, 0.6);
+}
+
+/* 个人印记提示 */
+.mark-note {
+  margin-top: 12px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--cinnabar-deep);
+}
+
+.mark-note::before {
+  content: "印 ";
+  font-family: var(--font-brush);
+}
+
+/* ---------- 节气 / 节日卡片 ---------- */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 12px;
+  padding: 12px 42px 12px 16px;
+  text-align: left;
+  background: var(--paper-white);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--cinnabar);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: box-shadow 0.25s, transform 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 6px 18px rgba(70, 52, 26, 0.18);
+  transform: translateY(-1px);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--ink-faint);
+}
+
+.card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-family: var(--font-brush);
+  font-size: 13px;
+  color: var(--paper-white);
+  background: var(--cinnabar);
+  border-radius: 3px;
+}
+
+/* 养生卡的黛青图标 */
+.card-icon.jade {
+  background: var(--jade);
+}
+
+.card-main {
+  font-family: var(--font-brush);
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: var(--ink);
+}
+
+.card-sub {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-more {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: var(--cinnabar);
+  opacity: 0.55;
+}
+
+/* 当日节日（小印章式标签，可点） */
+.fest-today {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fest-tag {
+  padding: 4px 12px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--cinnabar-deep);
+  border: 1px solid rgba(166, 58, 42, 0.45);
+  border-radius: 3px;
+  background: rgba(166, 58, 42, 0.06);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.fest-tag:hover {
+  background: var(--cinnabar);
+  color: var(--paper-white);
+}
+
+/* ---------- 重要日期卡：小字列表 + 展开钮 ---------- */
+
+.mark-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 6px;
+  text-align: left;
+}
+
+.mark-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.mark-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 1px 0;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--ink-soft);
+}
+
+.mark-line-days {
+  color: var(--ink-faint);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 七日之内的印记：倒计时以朱红强调 */
+.mark-line.near .mark-line-days {
+  color: var(--cinnabar-deep);
+  font-weight: 600;
+}
+
+.mark-line.past,
+.mark-line.faint {
+  color: var(--ink-faint);
+}
+
+.mark-empty {
+  padding: 2px 0;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--ink-faint);
+}
+
+/* 展开 / 收起按钮 */
+.mark-toggle {
+  margin-top: 6px;
+  padding: 3px 12px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--cinnabar-deep);
+  background: transparent;
+  border: 1px dashed rgba(166, 58, 42, 0.5);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mark-toggle:hover {
+  background: var(--cinnabar-soft);
+}
+
+.fest-today-label {
+  font-size: 12px;
+  color: var(--ink-faint);
+  letter-spacing: 2px;
+}
+
+/* 之后节日小字 */
+.fest-more {
+  margin-top: 8px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--ink-faint);
+}
+
+/* 点击“查黄历”时的研墨闪烁 */
+.result.query-flash {
+  animation: inkFlash 0.6s ease;
+}
+
+@keyframes inkFlash {
+  0%   { box-shadow: inset 0 0 0 999px rgba(166, 58, 42, 0.14); }
+  100% { box-shadow: inset 0 0 0 999px rgba(166, 58, 42, 0); }
+}
+
+/* 出错状态 */
+.result.error .result-lunar {
+  color: var(--cinnabar);
+}
+
+.result.error .card,
+.result.error .result-meta,
+.result.error .fest-today,
+.result.error .fest-more,
+.result.error .btn {
+  display: none;
+}
+
+/* ---------- 底部 ---------- */
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--ink-faint);
+}
+
+/* ---------- 弹窗通用 ---------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 24, 16, 0.55);
+  backdrop-filter: blur(3px);
+  animation: fadeIn 0.25s ease both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-box {
+  position: relative;
+  width: min(460px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: 0 30px 90px rgba(20, 14, 6, 0.5);
+  animation: boxIn 0.3s ease both;
+}
+
+@keyframes boxIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(251, 247, 236, 0.9);
+  color: var(--ink-soft);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.modal-close:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+/* ---------- 卷轴详情弹窗 ---------- */
+
+.scroll-box {
+  width: min(520px, 100%);
+  background: linear-gradient(180deg, #f6efdf, #f1e7d2);
+}
+
+.rod {
+  flex: 0 0 16px;
+  width: 100%;
+  background: linear-gradient(180deg, #8a6740, #4a331d 45%, #2e1f10 50%, #6b4c2a 55%, #8a6740);
+  border-radius: 8px 8px 3px 3px;
+  box-shadow: 0 2px 6px rgba(30, 20, 8, 0.45);
+}
+.rod-bottom {
+  border-radius: 3px 3px 8px 8px;
+  background: linear-gradient(180deg, #8a6740, #6b4c2a 45%, #2e1f10 50%, #4a331d 55%, #8a6740);
+}
+
+.scroll-body {
+  overflow-y: auto;
+  padding: 24px 30px 30px;
+  position: relative;
+}
+
+.detail-title {
+  font-family: var(--font-brush);
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: 6px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.detail-meta {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--cinnabar-deep);
+}
+
+.detail-body {
+  margin-top: 18px;
+  font-size: 15px;
+  line-height: 1.9;
+  letter-spacing: 1px;
+  color: var(--ink);
+  text-align: justify;
+}
+
+.detail-body p + p {
+  margin-top: 12px;
+  text-indent: 2em;
+}
+
+.detail-table {
+  width: 100%;
+  margin: 14px 0;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.detail-table td {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  letter-spacing: 2px;
+}
+
+.detail-table td:first-child {
+  width: 34%;
+  color: var(--ink-faint);
+  background: rgba(251, 247, 236, 0.7);
+  text-align: center;
+}
+
+/* ---------- 养生详情：宜忌 + 标签页 ---------- */
+
+.yiji {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: rgba(74, 107, 93, 0.08);
+  border: 1px solid rgba(74, 107, 93, 0.35);
+  border-radius: 4px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  line-height: 1.8;
+}
+
+.yiji .yi {
+  color: var(--jade);
+}
+
+.yiji .ji {
+  color: var(--cinnabar-deep);
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0 12px;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.tab:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+.tab.active {
+  background: var(--jade);
+  border-color: var(--jade);
+  color: var(--paper-white);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.tab-panel p {
+  margin: 0;
+  text-indent: 2em;
+}
+
+.yang-note {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line-strong);
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+
+/* ---------- 印记簿（重要日期列表） ---------- */
+
+.mark-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.mark-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--paper-white);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  text-align: left;
+}
+
+.mark-row:hover {
+  border-color: var(--cinnabar);
+  box-shadow: 0 3px 10px rgba(70, 52, 26, 0.12);
+}
+
+.mark-row.today {
+  border-color: var(--cinnabar);
+}
+
+.mark-row-note {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mark-row-date {
+  color: var(--ink-faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.mark-row-days {
+  color: var(--cinnabar-deep);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.mark-row.today .mark-row-days {
+  color: var(--cinnabar);
+  font-weight: 700;
+}
+
+/* ---------- 名号弹窗（注册 / 切换用户 / 事件记录） ---------- */
+
+.user-box {
+  width: min(480px, 100%);
+}
+
+.user-now {
+  margin-top: 16px;
+  padding: 10px 14px;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--ink-soft);
+  background: var(--paper-white);
+  border: 1px dashed var(--line-strong);
+  border-radius: 4px;
+}
+
+.user-reg {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.user-reg input {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  padding: 9px 12px;
+}
+
+.user-reg .btn {
+  margin: 0;
+  padding: 9px 20px;
+}
+
+.user-err {
+  margin-top: 6px;
+  min-height: 16px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--cinnabar-deep);
+}
+
+.user-section {
+  margin-top: 16px;
+}
+
+.user-section-title {
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--ink-faint);
+  border-bottom: 1px dashed var(--line);
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--paper-white);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.user-row:hover {
+  border-color: var(--cinnabar);
+}
+
+.user-row .user-name {
+  flex: 1;
+  text-align: left;
+}
+
+.user-row.current {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar-deep);
+}
+
+.user-row .user-tag {
+  font-size: 11px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.event-item {
+  display: flex;
+  gap: 10px;
+  padding: 5px 8px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--ink-soft);
+  border-bottom: 1px dotted var(--line);
+  text-align: left;
+}
+
+.event-item .event-time {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 卷尾印章 */
+.detail-seal {
+  position: absolute;
+  right: 30px;
+  bottom: 26px;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-brush);
+  font-size: 12px;
+  line-height: 1.3;
+  color: rgba(166, 58, 42, 0.85);
+  border: 2px solid rgba(166, 58, 42, 0.85);
+  border-radius: 4px;
+  transform: rotate(-4deg);
+  letter-spacing: 2px;
+}
+
+/* ---------- 月历 ---------- */
+
+.cal-box {
+  width: min(430px, 100%);
+  padding: 20px 22px 18px;
+  background: linear-gradient(180deg, #f8f2e4, #efe5cf);
+  overflow-y: auto;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cal-nav {
+  flex: 0 0 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.cal-nav:hover {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+.cal-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cal-title-lunar {
+  font-family: var(--font-brush);
+  font-size: 22px;
+  letter-spacing: 4px;
+  color: var(--ink);
+}
+
+.cal-title-solar {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--ink-faint);
+}
+
+.cal-today {
+  margin: 10px auto 8px;
+  padding: 5px 18px;
+}
+
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 6px 0;
+}
+
+.cal-week span {
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--ink-faint);
+  padding: 4px 0;
+}
+
+.cal-week span:first-child,
+.cal-week span:last-child {
+  color: var(--cinnabar);
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-cell {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--ink);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.cal-cell:hover {
+  background: var(--cinnabar-soft);
+}
+
+.cal-cell.dim {
+  color: #c2b8a0;
+}
+
+.cal-cell.today {
+  color: var(--cinnabar-deep);
+  font-weight: 700;
+}
+
+.cal-cell.today::after {
+  content: "";
+  position: absolute;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cinnabar);
+}
+
+.cal-cell.selected {
+  background: var(--cinnabar);
+  color: var(--paper-white);
+  box-shadow: 0 2px 8px rgba(166, 58, 42, 0.4);
+}
+
+.cal-cell.selected.today::after {
+  background: var(--paper-white);
+}
+
+/* 标记点（朱印） */
+.cal-cell .dot-mark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cinnabar);
+}
+
+.cal-cell.selected .dot-mark {
+  background: var(--paper-white);
+}
+
+/* 节日点（金） */
+.cal-cell .dot-fest {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.cal-cell.selected .dot-fest {
+  background: var(--paper-white);
+}
+
+.cal-mark {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.cal-mark-title {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.cal-mark-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cal-mark-row input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 7px 10px;
+}
+
+.cal-mark-row .btn {
+  margin: 0;
+  padding: 7px 12px;
+}
+
+.cal-legend {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--ink-faint);
+}
+
+/* ---------- 小屏适配 ---------- */
+
+@media (max-width: 480px) {
+  .panel { padding: 20px 16px 14px; }
+  .input-zone { grid-template-columns: 1fr; }
+  .cal-mark-row { flex-wrap: wrap; }
+  .cal-mark-row input { flex: 1 1 100%; }
+}
+
+/* ---------- 减少动态效果偏好 ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
